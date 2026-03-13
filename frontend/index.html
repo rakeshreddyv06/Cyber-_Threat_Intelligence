@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Cyber Threat Intelligence Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+body{
+background:#0f172a;
+color:white;
+font-family:Arial;
+}
+
+h1{
+text-align:center;
+}
+
+.container{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:20px;
+padding:20px;
+}
+
+.card{
+background:#1e293b;
+padding:20px;
+border-radius:10px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
+padding:10px;
+border-bottom:1px solid gray;
+}
+
+.attack{
+color:#ff4c4c;
+}
+
+.normal{
+color:#4ade80;
+}
+
+.alert{
+position:fixed;
+top:20px;
+right:20px;
+background:red;
+padding:10px;
+border-radius:5px;
+display:none;
+}
+
+</style>
+
+</head>
+
+<body>
+
+<h1>Cyber Threat Intelligence Dashboard</h1>
+
+<div id="alertBox" class="alert">⚠ Attack Detected!</div>
+
+<div class="container">
+
+<div class="card">
+
+<h3>Attack vs Normal Traffic</h3>
+
+<canvas id="barChart"></canvas>
+
+</div>
+
+<div class="card">
+
+<h3>Traffic Trend</h3>
+
+<canvas id="lineChart"></canvas>
+
+</div>
+
+</div>
+
+<div class="card">
+
+<h3>Live Threat Events</h3>
+
+<table id="eventsTable">
+
+<tr>
+<th>Source</th>
+<th>Destination</th>
+<th>Attack</th>
+<th>Confidence</th>
+</tr>
+
+</table>
+
+</div>
+
+<script>
+
+let normalCount=0
+let attackCount=0
+
+const barCtx=document.getElementById("barChart")
+
+const barChart=new Chart(barCtx,{
+type:"bar",
+data:{
+labels:["Normal","Attack"],
+datasets:[{
+label:"Traffic",
+data:[0,0],
+backgroundColor:["green","red"]
+}]
+},
+options:{
+responsive:true,
+
+plugins:{
+legend:{
+display:false
+}
+},
+scales:{
+y:{
+beginAtZero:true
+}
+}
+}
+})
+
+const lineCtx=document.getElementById("lineChart")
+
+const lineChart=new Chart(lineCtx,{
+type:"line",
+data:{
+labels:[],
+datasets:[
+{
+label:"Normal",
+data:[],
+borderColor:"green"
+},
+{
+label:"Attack",
+data:[],
+borderColor:"red"
+}
+]
+}
+})
+
+function showAlert(){
+
+let box=document.getElementById("alertBox")
+
+box.style.display="block"
+
+setTimeout(()=>box.style.display="none",3000)
+
+}
+
+async function loadEvents(){
+
+const res=await fetch("http://127.0.0.1:8000/events")
+
+const data=await res.json()
+
+if(!data) return
+
+const table=document.getElementById("eventsTable")
+
+table.innerHTML="<tr><th>Source</th><th>Destination</th><th>Attack</th><th>Confidence</th></tr>"
+
+normalCount=0
+attackCount=0
+
+data.forEach(event=>{
+
+let row=document.createElement("tr")
+
+let cls=event.attack_type==="BENIGN"?"normal":"attack"
+
+if(event.attack_type.toUpperCase()==="BENIGN") normalCount++
+else{
+attackCount++
+showAlert()
+}
+
+row.innerHTML=`
+<td>${event.source}</td>
+<td>${event.destination}</td>
+<td class="${cls}">${event.attack_type}</td>
+<td>${event.confidence}%</td>
+`
+
+table.appendChild(row)
+
+})
+
+barChart.data.datasets[0].data=[normalCount,attackCount]
+barChart.update()
+
+const MAX_POINTS = 20
+
+lineChart.data.labels.push(new Date().toLocaleTimeString())
+
+lineChart.data.datasets[0].data.push(normalCount)
+lineChart.data.datasets[1].data.push(attackCount)
+
+// remove old points (scroll effect)
+if(lineChart.data.labels.length > MAX_POINTS){
+
+lineChart.data.labels.shift()
+lineChart.data.datasets[0].data.shift()
+lineChart.data.datasets[1].data.shift()
+
+}
+
+lineChart.update()
+}
+
+loadEvents();              // run once immediately
+setInterval(loadEvents,2000)
+
+</script>
+
+</body>
+
+</html>

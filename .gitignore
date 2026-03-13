@@ -1,0 +1,21 @@
+# Virtual Environments
+venv/
+env/
+.env
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Optional: if you don't want to push models or data uncomment these
+# data/
+# model/
+
+# IDEs and Tools
+.vscode/
+.idea/
+*.swp
+*.swo
